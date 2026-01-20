@@ -1,74 +1,102 @@
 import streamlit as st
 import google.generativeai as genai
 from textblob import TextBlob
+import nltk
+import time
 
-st.set_page_config(page_title="MindfulMate AI", page_icon="🌱")
+# --- INITIAL SETUP ---
+st.set_page_config(page_title="MindfulMate AI", page_icon="🌱", layout="centered")
 
-# 1. Empathetic System Instruction
+# Download NLTK data needed for TextBlob sentiment analysis
+@st.cache_resource
+def download_nltk_data():
+    try:
+        nltk.download('punkt')
+        nltk.download('movie_reviews')
+        nltk.download('punkt_tab')
+    except Exception as e:
+        st.error(f"Error downloading NLTK data: {e}")
+
+download_nltk_data()
+
+# --- MENTAL HEALTH PERSONA ---
 SYSTEM_PROMPT = """
-You are MindfulMate, a supportive and empathetic AI companion for university students. 
-Your goal is to provide a safe, non-judgmental space for students to express stress, anxiety, or loneliness. 
-- Use warm, motivational language.
-- If a user seems stressed, offer quick relaxation tips (e.g., 4-7-8 breathing).
-- Avoid giving clinical medical advice. 
-- Always encourage professional help if the user mentions self-harm.
+You are MindfulMate, a compassionate and motivational AI companion designed for university students.
+Your mission is to provide a safe, non-judgmental space for students facing stress, anxiety, or loneliness.
+
+Guidelines:
+1. Detect user mood: If the user sounds sad or stressed, acknowledge their feelings first.
+2. Be Motivational: Offer encouraging words and remind them of their strengths.
+3. Relaxation Tips: Suggest actionable tips like 4-7-8 breathing, short walks, or mindfulness.
+4. Professional Boundary: You are NOT a doctor. If a user mentions self-harm, provide helpline numbers immediately.
+5. Tone: Warm, empathetic, and supportive.
 """
 
-st.title("🌱 MindfulMate: Student Support")
-st.caption("A safe space to talk, breathe, and find motivation.")
+st.title("🌱 MindfulMate")
+st.markdown("### Your Student Well-being Companion")
 
+# --- SIDEBAR & API KEY ---
 with st.sidebar:
-    st.header("Help & Resources")
-    st.info("Remember: I am an AI, not a doctor. If you're in crisis, please reach out to a professional.")
-    if st.button("🆘 Urgent Help Resources"):
-        st.toast("National Helpline: 9152987821 (iCall India)", icon="📞")
+    st.header("Settings & Resources")
+    api_key = st.text_input("Enter your Gemini API Key:", type="password")
     
-    if st.button("Clear Conversation"):
+    st.divider()
+    st.info("🆘 **Emergency Resources:**\n- iCall India: 9152987821\n- Vandrevala Foundation: 9999666555")
+    
+    if st.button("Clear Chat History", use_container_width=True):
         st.session_state.history = []
         st.rerun()
 
-# API Setup
-if "app_key" not in st.session_state:
-    st.session_state.app_key = st.text_input("Enter Gemini API Key", type='password')
+# Initialize Session State
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-if st.session_state.app_key:
-    genai.configure(api_key=st.session_state.app_key)
-    # Applying the System Instruction to the model
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        system_instruction=SYSTEM_PROMPT
-    )
-    
-    if "history" not in st.session_state:
-        st.session_state.history = []
+# --- MAIN CHAT LOGIC ---
+if api_key:
+    try:
+        genai.configure(api_key=api_key)
+        # Using Gemini 2.5 Flash for speed and reliability in 2026
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=SYSTEM_PROMPT
+        )
+        chat = model.start_chat(history=st.session_state.history)
 
-    chat = model.start_chat(history=st.session_state.history)
+        # Display Existing Messages
+        for message in st.session_state.history:
+            role = "assistant" if message.role == "model" else "user"
+            with st.chat_message(role):
+                st.markdown(message.parts[0].text)
 
-    # Display Chat
-    for message in st.session_state.history:
-        with st.chat_message("assistant" if message.role == 'model' else "user"):
-            st.markdown(message.parts[0].text)
+        # User Input
+        if prompt := st.chat_input("How are you feeling right now?"):
+            # 1. Sentiment Analysis
+            analysis = TextBlob(prompt)
+            sentiment_score = analysis.sentiment.polarity # Range -1 to 1
 
-    if prompt := st.chat_input("How are you feeling today?"):
-        # Real-time Sentiment Analysis
-        sentiment = TextBlob(prompt).sentiment.polarity
-        
-        with st.chat_message("user"):
-            st.markdown(prompt)
-            if sentiment < -0.3:
-                st.caption("✨ *It sounds like you're having a tough time. I'm here for you.*")
+            with st.chat_message("user"):
+                st.markdown(prompt)
+                # Visual Mood Feedback
+                if sentiment_score < -0.3:
+                    st.caption("✨ *MindfulMate is listening. It's okay to feel this way.*")
 
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
+            # 2. Generate AI Response
+            with st.chat_message("assistant"):
+                response_placeholder = st.empty()
+                full_response = ""
+                
+                # Streaming response with typewriter effect
+                stream = chat.send_message(prompt, stream=True)
+                for chunk in stream:
+                    full_response += chunk.text
+                    response_placeholder.markdown(full_response + "▌")
+                    time.sleep(0.01) # Small delay for realism
+                response_placeholder.markdown(full_response)
             
-            # Stream the response
-            stream = chat.send_message(prompt, stream=True)
-            for chunk in stream:
-                full_response += chunk.text
-                response_placeholder.markdown(full_response + "▌")
-            response_placeholder.markdown(full_response)
-        
-        st.session_state.history = chat.history
+            # Save history
+            st.session_state.history = chat.history
+
+    except Exception as e:
+        st.error(f"API Error: {e}")
 else:
-    st.warning("Please enter your API Key to begin.")
+    st.warning("Please enter your Gemini API Key in the sidebar to start.")
