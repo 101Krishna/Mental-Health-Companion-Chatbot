@@ -4,84 +4,84 @@ from textblob import TextBlob
 import nltk
 import time
 
-# --- 1. ENVIRONMENT SETUP ---
-st.set_page_config(page_title="MindfulMate AI", page_icon="🌱", layout="centered")
+# --- 1. SETUP & DEPENDENCIES ---
+st.set_page_config(page_title="MindfulMate AI", page_icon="🌱")
 
-# This block downloads the required data for TextBlob to work on Streamlit Cloud
+# Automatically download NLTK data for sentiment analysis on Streamlit Cloud
 @st.cache_resource
-def setup_nltk():
+def download_nltk():
     try:
         nltk.download('punkt')
-        nltk.download('punkt_tab') # Required for modern versions
+        nltk.download('punkt_tab')
         nltk.download('movie_reviews')
     except Exception as e:
-        st.error(f"NLTK Download Error: {e}")
+        st.error(f"Error loading NLP data: {e}")
 
-setup_nltk()
+download_nltk()
 
-# --- 2. MENTAL HEALTH PERSONA ---
+# --- 2. AI PERSONA CONFIGURATION ---
 SYSTEM_PROMPT = """
-You are MindfulMate, a compassionate AI peer companion for university students. 
-Your goal is to provide a safe, non-judgmental space for students facing stress or loneliness.
+You are MindfulMate, an empathetic AI companion for university students.
+Your mission: Provide a safe, non-judgmental space for students facing stress or loneliness.
 - Use warm, motivational language.
-- If the user is stressed, offer relaxation tips (e.g., 4-7-8 breathing).
-- If self-harm is mentioned, provide emergency resources immediately.
-- You are an AI, not a clinical counselor.
+- Detect mood: If the user sounds sad, offer immediate validation.
+- Tips: Suggest relaxation techniques like deep breathing or short walks.
+- Safety: If a user mentions self-harm, provide helpline numbers immediately.
 """
 
 st.title("🌱 MindfulMate")
-st.markdown("### Safe & Empathetic Student Support")
+st.markdown("### Support for Student Well-being")
 
 # --- 3. SIDEBAR & KEY HANDLING ---
 with st.sidebar:
-    st.header("App Controls")
+    st.header("App Settings")
     api_key = st.text_input("Enter Gemini API Key:", type="password")
     
     st.divider()
-    st.info("🆘 **Need Help?**\n- Helpline: 9152987821\n- iCall (India)")
+    st.info("🆘 **Need to talk?**\n- iCall (India): 9152987821\n- Vandrevala: 9999666555")
     
-    if st.button("Clear Conversation", use_container_width=True):
+    if st.button("Reset Conversation", use_container_width=True):
         st.session_state.history = []
         st.rerun()
 
-# Initialize Session State
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# --- 4. MAIN CHAT LOGIC ---
+# --- 4. CHAT INTERFACE ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        # Fix for 404: Using gemini-2.5-flash (the 2026 stable version)
+        # Using gemini-2.5-flash: Fast, stable, and fixes the 404 'not found' error
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             system_instruction=SYSTEM_PROMPT
         )
         chat = model.start_chat(history=st.session_state.history)
 
-        # Display Existing Messages
+        # Display Chat History
         for message in st.session_state.history:
-            role = "assistant" if message.role == "model" else "user"
+            role = "assistant" if message.role == 'model' else "user"
             with st.chat_message(role):
                 st.markdown(message.parts[0].text)
 
-        # User Input & Sentiment Analysis
-        if prompt := st.chat_input("What's on your mind?"):
-            # Sentiment Analysis (Detecting User Mood)
+        # User Prompt & Sentiment Detection
+        if prompt := st.chat_input("How are you feeling today?"):
+            # Sentiment Analysis
             analysis = TextBlob(prompt)
             mood_score = analysis.sentiment.polarity 
 
             with st.chat_message("user"):
                 st.markdown(prompt)
+                # Immediate visual feedback for low mood
                 if mood_score < -0.3:
-                    st.caption("✨ *MindfulMate detects you're feeling down. I'm here for you.*")
+                    st.caption("✨ *MindfulMate is here for you. Take a deep breath.*")
 
-            # Generate AI Response
+            # Assistant Response
             with st.chat_message("assistant"):
-                response_placeholder = st.empty()
                 full_response = ""
+                response_placeholder = st.empty()
                 
-                # Streaming with typewriter effect
+                # Streaming with typing effect
                 stream = chat.send_message(prompt, stream=True)
                 for chunk in stream:
                     full_response += chunk.text
@@ -89,10 +89,9 @@ if api_key:
                     time.sleep(0.01)
                 response_placeholder.markdown(full_response)
             
-            # Save history to session
             st.session_state.history = chat.history
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Something went wrong: {e}")
 else:
     st.warning("Please enter your API Key in the sidebar to begin.")
