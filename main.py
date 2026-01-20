@@ -4,94 +4,83 @@ from textblob import TextBlob
 import nltk
 import time
 
-# --- 1. SETUP & DEPENDENCIES ---
+# --- 1. CLOUD INITIALIZATION ---
 st.set_page_config(page_title="MindfulMate AI", page_icon="🌱")
 
-# Automatically download NLTK data for sentiment analysis on Streamlit Cloud
+# Force-download NLTK data required by TextBlob for sentiment analysis
 @st.cache_resource
-def download_nltk():
+def initialize_nlp():
     try:
         nltk.download('punkt')
         nltk.download('punkt_tab')
         nltk.download('movie_reviews')
     except Exception as e:
-        st.error(f"Error loading NLP data: {e}")
+        st.error(f"NLP Data Error: {e}")
 
-download_nltk()
+initialize_nlp()
 
-# --- 2. AI PERSONA CONFIGURATION ---
+# --- 2. AI CONFIGURATION (Gemini 2.5) ---
 SYSTEM_PROMPT = """
-You are MindfulMate, an empathetic AI companion for university students.
-Your mission: Provide a safe, non-judgmental space for students facing stress or loneliness.
-- Use warm, motivational language.
-- Detect mood: If the user sounds sad, offer immediate validation.
-- Tips: Suggest relaxation techniques like deep breathing or short walks.
-- Safety: If a user mentions self-harm, provide helpline numbers immediately.
+You are MindfulMate, a supportive AI for students. 
+1. Detect mood: Use empathetic language if the student is stressed.
+2. Be motivational: Focus on resilience and student well-being.
+3. Provide tips: Suggest relaxation techniques like deep breathing.
+4. Safety: Provide helpline numbers (e.g., 9152987821) if self-harm is mentioned.
 """
 
 st.title("🌱 MindfulMate")
-st.markdown("### Support for Student Well-being")
+st.caption("Empathetic support for university students")
 
-# --- 3. SIDEBAR & KEY HANDLING ---
+# --- 3. SIDEBAR & API KEY ---
 with st.sidebar:
-    st.header("App Settings")
+    st.header("Configuration")
     api_key = st.text_input("Enter Gemini API Key:", type="password")
-    
-    st.divider()
-    st.info("🆘 **Need to talk?**\n- iCall (India): 9152987821\n- Vandrevala: 9999666555")
-    
-    if st.button("Reset Conversation", use_container_width=True):
+    if st.button("Clear Chat"):
         st.session_state.history = []
         st.rerun()
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# --- 4. CHAT INTERFACE ---
+# --- 4. CHAT ENGINE ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        # Using gemini-2.5-flash: Fast, stable, and fixes the 404 'not found' error
+        # Using Gemini 2.5 Flash for 2026 stability
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             system_instruction=SYSTEM_PROMPT
         )
         chat = model.start_chat(history=st.session_state.history)
 
-        # Display Chat History
+        # Show previous messages
         for message in st.session_state.history:
-            role = "assistant" if message.role == 'model' else "user"
-            with st.chat_message(role):
+            with st.chat_message("assistant" if message.role == 'model' else "user"):
                 st.markdown(message.parts[0].text)
 
-        # User Prompt & Sentiment Detection
-        if prompt := st.chat_input("How are you feeling today?"):
-            # Sentiment Analysis
-            analysis = TextBlob(prompt)
-            mood_score = analysis.sentiment.polarity 
-
+        # Sentiment Analysis & Response
+        if prompt := st.chat_input("How are you feeling?"):
+            # Real-time Sentiment Logic
+            score = TextBlob(prompt).sentiment.polarity
+            
             with st.chat_message("user"):
                 st.markdown(prompt)
-                # Immediate visual feedback for low mood
-                if mood_score < -0.3:
-                    st.caption("✨ *MindfulMate is here for you. Take a deep breath.*")
+                if score < -0.3:
+                    st.toast("I can feel that you're going through a lot. I'm here.", icon="❤️")
 
-            # Assistant Response
             with st.chat_message("assistant"):
+                # Streaming UI
                 full_response = ""
-                response_placeholder = st.empty()
-                
-                # Streaming with typing effect
-                stream = chat.send_message(prompt, stream=True)
-                for chunk in stream:
+                res_box = st.empty()
+                for chunk in chat.send_message(prompt, stream=True):
                     full_response += chunk.text
-                    response_placeholder.markdown(full_response + "▌")
+                    res_box.markdown(full_response + "▌")
                     time.sleep(0.01)
-                response_placeholder.markdown(full_response)
+                res_box.markdown(full_response)
             
             st.session_state.history = chat.history
 
     except Exception as e:
-        st.error(f"Something went wrong: {e}")
+        st.error(f"App Error: {e}")
 else:
-    st.warning("Please enter your API Key in the sidebar to begin.")
+    st.info("Please enter your API Key in the sidebar to start.")
