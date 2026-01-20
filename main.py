@@ -2,12 +2,66 @@ import streamlit as st
 import google.generativeai as genai
 
 st.set_page_config(
-    page_title="Chat with Gemini 2.5",
-    page_icon="🔥"
+    page_title="Student Wellness Companion",
+    page_icon="🌱"
 )
 
-st.title("Chat with Gemini 2.5")
-st.caption("A Chatbot Powered by Google Gemini 2.5 Flash")
+st.title("🌱 Student Wellness Companion")
+st.caption("Your supportive AI friend - Powered by Google Gemini 2.5 Flash")
+
+# System Instruction for Mental Health Support
+SYSTEM_INSTRUCTION = """
+You are a compassionate and supportive AI companion designed specifically for students. 
+Your primary role is to provide emotional support, detect mood through the user's messages, 
+and respond with empathy and care.
+
+## Core Behaviors:
+
+### 1. Mood Detection & Sentiment Analysis:
+- Carefully analyze the tone, word choice, and context of each message
+- Identify emotions like stress, anxiety, loneliness, sadness, frustration, or overwhelm
+- Also recognize positive emotions and celebrate them
+
+### 2. Empathetic Responses:
+- Always validate the student's feelings first ("I hear you", "That sounds really tough")
+- Use warm, non-judgmental language
+- Avoid dismissive phrases like "just relax" or "don't worry"
+- Be genuine and human-like in your responses
+
+### 3. Motivational Support:
+- Offer encouragement tailored to their situation
+- Share brief, relevant affirmations
+- Remind them of their strengths and resilience
+- Help reframe negative thoughts gently
+
+### 4. Relaxation Tips (when appropriate):
+When detecting stress/anxiety, naturally weave in techniques like:
+- Deep breathing exercises (e.g., 4-7-8 technique)
+- Grounding techniques (5-4-3-2-1 senses exercise)
+- Progressive muscle relaxation
+- Mindfulness moments
+- Short breaks and self-care suggestions
+
+### 5. Safety Protocol:
+- If someone expresses severe distress, self-harm thoughts, or crisis situations:
+  * Express care and concern
+  * Gently encourage them to reach out to a professional counselor
+  * Provide crisis helpline information (suggest they contact campus counseling or national helplines)
+  * Never minimize their feelings
+
+### 6. General Queries:
+- For non-mental-health questions (academics, general chat, etc.), respond helpfully and normally
+- Maintain a friendly, supportive tone throughout
+
+### Response Style:
+- Keep responses concise but warm (not too long)
+- Use gentle emoji occasionally to add warmth 🌟💚
+- Ask follow-up questions to show you care
+- Remember context from the conversation
+
+Remember: You are NOT a replacement for professional help, but a supportive first step 
+and a safe space for students to express themselves.
+"""
 
 # 1. Secure API Key Input
 if "app_key" not in st.session_state:
@@ -24,15 +78,65 @@ if "history" not in st.session_state:
 if "app_key" in st.session_state:
     try:
         genai.configure(api_key=st.session_state.app_key)
-        # Updated model name to gemini-2.5-flash (stable in 2026)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        
+        # Initialize model with system instruction for mental health support
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=SYSTEM_INSTRUCTION,
+            generation_config={
+                "temperature": 0.8,  # Slightly creative for empathetic responses
+                "top_p": 0.95,
+                "max_output_tokens": 1024,
+            }
+        )
         chat = model.start_chat(history=st.session_state.history)
         
         # Sidebar Options
         with st.sidebar:
-            if st.button("Clear Chat Window", use_container_width=True, type="primary"):
+            st.header("🧘 Quick Relaxation Tips")
+            with st.expander("Deep Breathing (4-7-8)"):
+                st.write("""
+                1. Breathe in for **4 seconds**
+                2. Hold for **7 seconds**  
+                3. Exhale for **8 seconds**
+                4. Repeat 3-4 times
+                """)
+            
+            with st.expander("Grounding (5-4-3-2-1)"):
+                st.write("""
+                Notice around you:
+                - **5** things you can see
+                - **4** things you can touch
+                - **3** things you can hear
+                - **2** things you can smell
+                - **1** thing you can taste
+                """)
+            
+            with st.expander("📞 Crisis Resources"):
+                st.write("""
+                - **Campus Counseling**: Check your university website
+                - **iCall**: 9152987821
+                - **Vandrevala Foundation**: 1860-2662-345
+                - **NIMHANS**: 080-46110007
+                """)
+            
+            st.divider()
+            
+            if st.button("🔄 Clear Chat", use_container_width=True, type="primary"):
                 st.session_state.history = []
                 st.rerun()
+
+        # Welcome message for new users
+        if not st.session_state.history:
+            with st.chat_message("assistant"):
+                st.markdown("""
+                Hey there! 👋 I'm your Student Wellness Companion. 
+                
+                I'm here to listen, support, and chat with you about anything on your mind - 
+                whether it's stress, studies, or just wanting someone to talk to.
+                
+                **How are you feeling today?** 💚
+                """)
 
         # Display Chat History
         for message in st.session_state.history:
@@ -41,18 +145,16 @@ if "app_key" in st.session_state:
                 st.markdown(message.parts[0].text)
 
         # Chat Input logic
-        if prompt := st.chat_input("Type your message here..."):
+        if prompt := st.chat_input("Share what's on your mind..."):
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
-                # Use a generator for the typewriter effect
                 def stream_generator():
                     response = chat.send_message(prompt, stream=True)
                     for chunk in response:
                         yield chunk.text
 
-                # st.write_stream is the modern way to handle streaming responses
                 full_response = st.write_stream(stream_generator())
             
             # Update session state history
@@ -61,4 +163,15 @@ if "app_key" in st.session_state:
     except Exception as e:
         st.error(f"An error occurred: {e}")
 else:
-    st.info("Please enter your API Key in the text box above to start chatting.")
+    st.container()
+    st.info("🔑 Please enter your API Key in the text box above to start chatting.")
+    st.markdown("""
+    ### About This App
+    This is a **safe space** for students to:
+    - 💬 Talk about stress, anxiety, or loneliness
+    - 🧘 Get relaxation techniques
+    - 💪 Receive motivational support
+    - 📚 Ask general questions too!
+    
+    *Your conversations are private and not stored.*
+    """)
