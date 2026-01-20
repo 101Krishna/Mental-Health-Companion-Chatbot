@@ -1,74 +1,64 @@
 import streamlit as st
 import google.generativeai as genai
-from textblob import TextBlob
 
-st.set_page_config(page_title="MindfulMate AI", page_icon="🌱")
+st.set_page_config(
+    page_title="Chat with Gemini 2.5",
+    page_icon="🔥"
+)
 
-# 1. Empathetic System Instruction
-SYSTEM_PROMPT = """
-You are MindfulMate, a supportive and empathetic AI companion for university students. 
-Your goal is to provide a safe, non-judgmental space for students to express stress, anxiety, or loneliness. 
-- Use warm, motivational language.
-- If a user seems stressed, offer quick relaxation tips (e.g., 4-7-8 breathing).
-- Avoid giving clinical medical advice. 
-- Always encourage professional help if the user mentions self-harm.
-"""
+st.title("Chat with Gemini 2.5")
+st.caption("A Chatbot Powered by Google Gemini 2.5 Flash")
 
-st.title("🌱 MindfulMate: Student Support")
-st.caption("A safe space to talk, breathe, and find motivation.")
-
-with st.sidebar:
-    st.header("Help & Resources")
-    st.info("Remember: I am an AI, not a doctor. If you're in crisis, please reach out to a professional.")
-    if st.button("🆘 Urgent Help Resources"):
-        st.toast("National Helpline: 9152987821 (iCall India)", icon="📞")
-    
-    if st.button("Clear Conversation"):
-        st.session_state.history = []
+# 1. Secure API Key Input
+if "app_key" not in st.session_state:
+    app_key = st.text_input("Please enter your Gemini API Key", type='password')
+    if app_key:
+        st.session_state.app_key = app_key
         st.rerun()
 
-# API Setup
-if "app_key" not in st.session_state:
-    st.session_state.app_key = st.text_input("Enter Gemini API Key", type='password')
+# 2. Initialize Session State for History
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-if st.session_state.app_key:
-    genai.configure(api_key=st.session_state.app_key)
-    # Applying the System Instruction to the model
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        system_instruction=SYSTEM_PROMPT
-    )
-    
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
-    chat = model.start_chat(history=st.session_state.history)
-
-    # Display Chat
-    for message in st.session_state.history:
-        with st.chat_message("assistant" if message.role == 'model' else "user"):
-            st.markdown(message.parts[0].text)
-
-    if prompt := st.chat_input("How are you feeling today?"):
-        # Real-time Sentiment Analysis
-        sentiment = TextBlob(prompt).sentiment.polarity
+# 3. Model Initialization (Only if Key exists)
+if "app_key" in st.session_state:
+    try:
+        genai.configure(api_key=st.session_state.app_key)
+        # Updated model name to gemini-2.5-flash (stable in 2026)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        chat = model.start_chat(history=st.session_state.history)
         
-        with st.chat_message("user"):
-            st.markdown(prompt)
-            if sentiment < -0.3:
-                st.caption("✨ *It sounds like you're having a tough time. I'm here for you.*")
+        # Sidebar Options
+        with st.sidebar:
+            if st.button("Clear Chat Window", use_container_width=True, type="primary"):
+                st.session_state.history = []
+                st.rerun()
 
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
+        # Display Chat History
+        for message in st.session_state.history:
+            role = "assistant" if message.role == 'model' else message.role
+            with st.chat_message(role):
+                st.markdown(message.parts[0].text)
+
+        # Chat Input logic
+        if prompt := st.chat_input("Type your message here..."):
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                # Use a generator for the typewriter effect
+                def stream_generator():
+                    response = chat.send_message(prompt, stream=True)
+                    for chunk in response:
+                        yield chunk.text
+
+                # st.write_stream is the modern way to handle streaming responses
+                full_response = st.write_stream(stream_generator())
             
-            # Stream the response
-            stream = chat.send_message(prompt, stream=True)
-            for chunk in stream:
-                full_response += chunk.text
-                response_placeholder.markdown(full_response + "▌")
-            response_placeholder.markdown(full_response)
-        
-        st.session_state.history = chat.history
+            # Update session state history
+            st.session_state.history = chat.history
+
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 else:
-    st.warning("Please enter your API Key to begin.")
+    st.info("Please enter your API Key in the text box above to start chatting.")
