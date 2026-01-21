@@ -2,6 +2,8 @@
 
 A compassionate AI-powered mental health support chatbot designed specifically for students, built with Streamlit and Google Gemini 2.5 Flash API.
 
+Click Here - https://mental-health-companion-chatbot-4qyu3ctcghbyah7ddlrqqw.streamlit.app/
+
 ---
 
 ## 1. Problem Statement
