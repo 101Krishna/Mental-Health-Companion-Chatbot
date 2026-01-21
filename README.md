@@ -361,19 +361,11 @@ streamlit run main.py
 - A resource for coping strategies and wellness tips
 - A bridge to professional help
 
-If you or someone you know is in crisis, please contact:
-- **Campus Counseling**: Check your university website
-- **iCall**: 9152987821
-- **Vandrevala Foundation**: 1860-2662-345
-- **NIMHANS**: 080-46110007
-- **Emergency**: 112 (India)
-
 ---
 
 **Author:** Krishna  
 **Project Type:** Student Mental Health Support  
-**Built With:** Streamlit + Google Gemini 2.5 Flash  
-**License:** MIT  
+**Built With:** Streamlit + Google Gemini 2.5 Flash    
 **Last Updated:** January 2026  
 
 *Made with 💚 for student wellness*
