@@ -6,16 +6,10 @@ A compassionate AI-powered mental health support chatbot designed specifically f
 
 ## 1. Problem Statement
 
-Students today face unprecedented levels of stress and mental health challenges:
-
-- **Limited Access to Mental Health Support:** Most universities have limited counseling services with long waiting lists. Students cannot get immediate help when needed.
-- **Stigma and Barriers:** Many students hesitate to seek professional help due to stigma, cost, or fear of judgment.
-- **24/7 Availability Gap:** Traditional counseling is not available after hours or during weekends, leaving students vulnerable during critical moments.
-- **Rising Mental Health Crisis:** According to recent studies, 60% of students report feeling overwhelming stress, with anxiety and depression being the most common issues.
-- **Lack of Immediate Coping Resources:** Students need quick access to relaxation techniques and emotional support without the pressure of formal therapy.
-- **Emotional Isolation:** Many students feel alone and have no immediate safe space to express their feelings without judgment.
-
-The need is for an accessible, non-judgmental, 24/7 AI companion that can provide immediate emotional support, detect emotional distress, and offer practical coping strategies to students.
+Students face high levels of stress, anxiety, and loneliness but often hesitate to approach 
+professional counselors. A safe, AI-driven chatbot that detects user mood through sentiment 
+analysis and generates empathetic, motivational responses along with relaxation tips can 
+support student mental well-being. 
 
 ---
 
