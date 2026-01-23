@@ -64,26 +64,14 @@ if "app_key" not in st.session_state:
         st.session_state.app_key = app_key
         st.rerun()
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # Main App
 if "app_key" in st.session_state:
     try:
         # Initialize client with new SDK
         client = genai.Client(api_key=st.session_state.app_key)
-
-        # Create chat session
-        chat = client.chats.create(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.8,
-                top_p=0.95,
-                max_output_tokens=1024,
-            ),
-            history=st.session_state.history,
-        )
 
         # Sidebar
         with st.sidebar:
@@ -118,11 +106,11 @@ if "app_key" in st.session_state:
             st.divider()
 
             if st.button("🔄 Clear Chat", use_container_width=True, type="primary"):
-                st.session_state.history = []
+                st.session_state.messages = []
                 st.rerun()
 
         # Welcome message
-        if not st.session_state.history:
+        if not st.session_state.messages:
             with st.chat_message("assistant"):
                 st.markdown("""
                 Hey there! 👋 I'm your Student Wellness Companion.
@@ -134,32 +122,48 @@ if "app_key" in st.session_state:
                 """)
 
         # Display chat history
-        for message in st.session_state.history:
-            role = "assistant" if message.role == "model" else message.role
-            text = ""
-            if hasattr(message, "parts") and message.parts:
-                if hasattr(message.parts[0], "text"):
-                    text = message.parts[0].text
-            if text:
-                with st.chat_message(role):
-                    st.markdown(text)
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
         # Chat input
         if prompt := st.chat_input("Share what's on your mind..."):
+            # Add user message to history
+            st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
+            # Build conversation history for API
+            contents = []
+            for msg in st.session_state.messages:
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append(
+                    types.Content(
+                        role=role,
+                        parts=[types.Part.from_text(text=msg["content"])]
+                    )
+                )
+
+            # Generate response
             with st.chat_message("assistant"):
-                def stream_generator():
-                    response = chat.send_message_stream(prompt)
-                    for chunk in response:
-                        if chunk.text:
-                            yield chunk.text
+                response = client.models.generate_content_stream(
+                    model="gemini-2.5-flash",
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_INSTRUCTION,
+                        temperature=0.8,
+                        top_p=0.95,
+                        max_output_tokens=1024,
+                    ),
+                )
+                
+                # Stream the response
+                full_response = st.write_stream(
+                    chunk.text for chunk in response if chunk.text
+                )
 
-                st.write_stream(stream_generator())
-
-            # Update history
-            st.session_state.history = chat.get_history()
+            # Add assistant response to history
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
