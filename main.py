@@ -46,7 +46,7 @@ When detecting stress/anxiety, naturally weave in techniques like:
 - If someone expresses severe distress, self-harm thoughts, or crisis situations:
   * Express care and concern
   * Gently encourage them to reach out to a professional counselor
-  * Provide crisis helpline information (suggest they contact campus counseling or national helplines)
+  * Provide crisis helpline information
   * Never minimize their feelings
 
 ### 6. General Queries:
@@ -84,7 +84,7 @@ if "app_key" in st.session_state:
             model_name="gemini-2.5-flash",
             system_instruction=SYSTEM_INSTRUCTION,
             generation_config={
-                "temperature": 0.8,  # Slightly creative for empathetic responses
+                "temperature": 0.8,
                 "top_p": 0.95,
                 "max_output_tokens": 1024,
             }
@@ -94,7 +94,8 @@ if "app_key" in st.session_state:
         # Sidebar Options
         with st.sidebar:
             st.header("🧘 Quick Relaxation Tips")
-            with st.expander("Deep Breathing (4-7-8)"):
+            
+            with st.expander("🌬️ Deep Breathing (4-7-8)"):
                 st.write("""
                 1. Breathe in for **4 seconds**
                 2. Hold for **7 seconds**  
@@ -102,7 +103,7 @@ if "app_key" in st.session_state:
                 4. Repeat 3-4 times
                 """)
             
-            with st.expander("Grounding (5-4-3-2-1)"):
+            with st.expander("🌍 Grounding (5-4-3-2-1)"):
                 st.write("""
                 Notice around you:
                 - **5** things you can see
@@ -112,12 +113,25 @@ if "app_key" in st.session_state:
                 - **1** thing you can taste
                 """)
             
+            with st.expander("💪 Quick Stress Relief"):
+                st.write("""
+                - Take 5 slow, deep breaths
+                - Roll your shoulders back
+                - Stretch your arms overhead
+                - Drink a glass of water
+                - Step outside for 2 minutes
+                """)
+            
             with st.expander("📞 Crisis Resources"):
                 st.write("""
-                - **Campus Counseling**: Check your university website
-                - **iCall**: 9152987821
-                - **Vandrevala Foundation**: 1860-2662-345
-                - **NIMHANS**: 080-46110007
+                **India:**
+                - iCall: 9152987821
+                - Vandrevala Foundation: 1860-2662-345
+                - NIMHANS: 080-46110007
+                
+                **International:**
+                - Crisis Text Line: Text HOME to 741741
+                - Check your campus counseling center
                 """)
             
             st.divider()
@@ -142,7 +156,7 @@ if "app_key" in st.session_state:
         for message in st.session_state.history:
             role = "assistant" if message.role == 'model' else message.role
             with st.chat_message(role):
-                st.markdown(message.parts[0].text)
+                st.markdown(message.parts.text)
 
         # Chat Input logic
         if prompt := st.chat_input("Share what's on your mind..."):
@@ -162,16 +176,20 @@ if "app_key" in st.session_state:
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
+        
 else:
-    st.container()
-    st.info("🔑 Please enter your API Key in the text box above to start chatting.")
+    st.info("🔑 Please enter your API Key above to start chatting.")
     st.markdown("""
     ### About This App
     This is a **safe space** for students to:
     - 💬 Talk about stress, anxiety, or loneliness
-    - 🧘 Get relaxation techniques
+    - 🧘 Get relaxation techniques and coping strategies
     - 💪 Receive motivational support
     - 📚 Ask general questions too!
     
-    *Your conversations are private and not stored.*
+    *Your conversations are private and not stored permanently.*
+    
+    ---
+    **⚠️ Disclaimer:** This chatbot is not a replacement for professional mental health care. 
+    If you're in crisis, please reach out to a counselor or helpline.
     """)
