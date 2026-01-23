@@ -1,5 +1,4 @@
 import streamlit as st
-import google.generativeai as genai
 
 # Page Config
 st.set_page_config(
@@ -10,7 +9,36 @@ st.set_page_config(
 st.title("🌱 Student Wellness Companion")
 st.caption("A supportive AI chat for students – powered by Gemini")
 
-# System Instruction for Mental Health Support
+# Try importing the package
+try:
+    import google.generativeai as genai
+    IMPORT_SUCCESS = True
+except ImportError as e:
+    IMPORT_SUCCESS = False
+    IMPORT_ERROR = str(e)
+
+if not IMPORT_SUCCESS:
+    st.error("❌ Failed to import google-generativeai")
+    st.code(IMPORT_ERROR)
+    st.markdown("""
+    ### 🔧 How to Fix This:
+    
+    **Your `requirements.txt` file must exist in your GitHub repo.**
+    
+    1. Go to your GitHub repository
+    2. Click **"Add file"** → **"Create new file"**
+    3. Name it exactly: `requirements.txt`
+    4. Add this content:
+    ```
+    streamlit
+    google-generativeai
+    ```
+    5. Click **"Commit new file"**
+    6. Go to Streamlit Cloud → **Manage app** → **Reboot app**
+    """)
+    st.stop()
+
+# System Instruction
 SYSTEM_INSTRUCTION = """
 You are a compassionate and supportive AI companion designed specifically for students.
 Your primary role is to provide emotional support, detect mood through user messages,
@@ -69,10 +97,8 @@ if "messages" not in st.session_state:
 # Main App
 if "app_key" in st.session_state:
     try:
-        # Configure the API
         genai.configure(api_key=st.session_state.app_key)
         
-        # Initialize model with system instruction
         model = genai.GenerativeModel(
             model_name="gemini-2.0-flash",
             system_instruction=SYSTEM_INSTRUCTION,
@@ -138,26 +164,21 @@ if "app_key" in st.session_state:
 
         # Chat input
         if prompt := st.chat_input("Share what's on your mind..."):
-            # Add user message
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            # Build history for API
             history = []
-            for msg in st.session_state.messages[:-1]:  # Exclude current message
+            for msg in st.session_state.messages[:-1]:
                 role = "user" if msg["role"] == "user" else "model"
                 history.append({"role": role, "parts": [msg["content"]]})
 
-            # Start chat with history
             chat = model.start_chat(history=history)
 
-            # Generate streaming response
             with st.chat_message("assistant"):
                 response = chat.send_message(prompt, stream=True)
                 full_response = st.write_stream(chunk.text for chunk in response)
 
-            # Save assistant response
             st.session_state.messages.append({"role": "assistant", "content": full_response})
 
     except Exception as e:
