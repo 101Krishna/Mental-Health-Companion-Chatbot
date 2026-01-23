@@ -1,4 +1,6 @@
 import streamlit as st
+from google import genai
+from google.genai import types
 
 # Page Config
 st.set_page_config(
@@ -7,38 +9,9 @@ st.set_page_config(
 )
 
 st.title("🌱 Student Wellness Companion")
-st.caption("A supportive AI chat for students – powered by Gemini")
+st.caption("A supportive AI chat for students – powered by Gemini 2.5 Flash")
 
-# Try importing the package
-try:
-    import google.generativeai as genai
-    IMPORT_SUCCESS = True
-except ImportError as e:
-    IMPORT_SUCCESS = False
-    IMPORT_ERROR = str(e)
-
-if not IMPORT_SUCCESS:
-    st.error("❌ Failed to import google-generativeai")
-    st.code(IMPORT_ERROR)
-    st.markdown("""
-    ### 🔧 How to Fix This:
-    
-    **Your `requirements.txt` file must exist in your GitHub repo.**
-    
-    1. Go to your GitHub repository
-    2. Click **"Add file"** → **"Create new file"**
-    3. Name it exactly: `requirements.txt`
-    4. Add this content:
-    ```
-    streamlit
-    google-generativeai
-    ```
-    5. Click **"Commit new file"**
-    6. Go to Streamlit Cloud → **Manage app** → **Reboot app**
-    """)
-    st.stop()
-
-# System Instruction
+# System Instruction for Mental Health Support
 SYSTEM_INSTRUCTION = """
 You are a compassionate and supportive AI companion designed specifically for students.
 Your primary role is to provide emotional support, detect mood through user messages,
@@ -91,22 +64,25 @@ if "app_key" not in st.session_state:
         st.session_state.app_key = app_key
         st.rerun()
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 # Main App
 if "app_key" in st.session_state:
     try:
-        genai.configure(api_key=st.session_state.app_key)
-        
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=SYSTEM_INSTRUCTION,
-            generation_config={
-                "temperature": 0.8,
-                "top_p": 0.95,
-                "max_output_tokens": 1024,
-            }
+        # Initialize client with new SDK
+        client = genai.Client(api_key=st.session_state.app_key)
+
+        # Create chat session
+        chat = client.chats.create(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.8,
+                top_p=0.95,
+                max_output_tokens=1024,
+            ),
+            history=st.session_state.history,
         )
 
         # Sidebar
@@ -142,11 +118,11 @@ if "app_key" in st.session_state:
             st.divider()
 
             if st.button("🔄 Clear Chat", use_container_width=True, type="primary"):
-                st.session_state.messages = []
+                st.session_state.history = []
                 st.rerun()
 
         # Welcome message
-        if not st.session_state.messages:
+        if not st.session_state.history:
             with st.chat_message("assistant"):
                 st.markdown("""
                 Hey there! 👋 I'm your Student Wellness Companion.
@@ -158,28 +134,32 @@ if "app_key" in st.session_state:
                 """)
 
         # Display chat history
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+        for message in st.session_state.history:
+            role = "assistant" if message.role == "model" else message.role
+            text = ""
+            if hasattr(message, "parts") and message.parts:
+                if hasattr(message.parts[0], "text"):
+                    text = message.parts[0].text
+            if text:
+                with st.chat_message(role):
+                    st.markdown(text)
 
         # Chat input
         if prompt := st.chat_input("Share what's on your mind..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            history = []
-            for msg in st.session_state.messages[:-1]:
-                role = "user" if msg["role"] == "user" else "model"
-                history.append({"role": role, "parts": [msg["content"]]})
-
-            chat = model.start_chat(history=history)
-
             with st.chat_message("assistant"):
-                response = chat.send_message(prompt, stream=True)
-                full_response = st.write_stream(chunk.text for chunk in response)
+                def stream_generator():
+                    response = chat.send_message_stream(prompt)
+                    for chunk in response:
+                        if chunk.text:
+                            yield chunk.text
 
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+                st.write_stream(stream_generator())
+
+            # Update history
+            st.session_state.history = chat.get_history()
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
