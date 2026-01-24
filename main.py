@@ -1,24 +1,31 @@
 import streamlit as st
+import subprocess
+import sys
 
-# Page Config - Must be first Streamlit command
+# Page Config
 st.set_page_config(
     page_title="Student Wellness Companion",
     page_icon="🌱",
     layout="centered"
 )
 
-# Import Google AI after page config
+# Function to install package if not found
+def install_package(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Try importing google.generativeai
 try:
     import google.generativeai as genai
 except ImportError:
-    st.error("❌ Failed to import google-generativeai. Please check requirements.txt")
-    st.stop()
+    st.warning("Installing google-generativeai... Please wait.")
+    install_package("google-generativeai")
+    st.rerun()
 
 # App Title
 st.title("🌱 Student Wellness Companion")
 st.caption("A supportive AI chat for students – powered by Gemini")
 
-# System Instruction for Mental Health Support
+# System Instruction
 SYSTEM_INSTRUCTION = """
 You are a compassionate and supportive AI companion designed specifically for students.
 Your primary role is to provide emotional support, detect mood through user messages,
@@ -74,38 +81,42 @@ if "api_key_valid" not in st.session_state:
 if "app_key" not in st.session_state:
     st.session_state.app_key = ""
 
-# API Key Input
+# API Key Input Section
 if not st.session_state.api_key_valid:
     st.markdown("### 🔑 Enter Your Gemini API Key")
     
     api_key_input = st.text_input(
         "API Key", 
         type="password", 
-        placeholder="Enter your Gemini API key here...",
-        help="Get your API key from https://makersuite.google.com/app/apikey"
+        placeholder="Paste your Gemini API key here..."
     )
     
-    if st.button("Submit API Key", type="primary"):
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        submit_btn = st.button("✅ Submit", type="primary", use_container_width=True)
+    
+    if submit_btn:
         if api_key_input:
             try:
-                # Test the API key
                 genai.configure(api_key=api_key_input)
                 model = genai.GenerativeModel("gemini-1.5-flash")
-                model.generate_content("Hello")
+                model.generate_content("Hi")
                 
                 st.session_state.app_key = api_key_input
                 st.session_state.api_key_valid = True
-                st.success("✅ API Key is valid!")
+                st.success("✅ API Key verified!")
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ Invalid API Key: {e}")
+                st.error(f"❌ Invalid API Key: {str(e)}")
         else:
-            st.warning("Please enter an API key")
+            st.warning("⚠️ Please enter an API key")
     
     st.divider()
     
     st.markdown("""
-    ### About This App
+    ### 📖 About This App
+    
     A **safe space** for students to:
     - 💬 Talk about stress, anxiety, or loneliness
     - 🧘 Get relaxation techniques
@@ -114,182 +125,140 @@ if not st.session_state.api_key_valid:
     
     ---
     
-    **How to get an API Key:**
-    1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+    ### 🔑 How to get an API Key:
+    1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
     2. Sign in with your Google account
-    3. Click "Create API Key"
+    3. Click **"Create API Key"**
     4. Copy and paste it above
     """)
     
     st.stop()
 
-# Main App (only runs if API key is valid)
-try:
-    # Configure the API
-    genai.configure(api_key=st.session_state.app_key)
-    
-    # Initialize model
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=SYSTEM_INSTRUCTION,
-        generation_config=genai.GenerationConfig(
-            temperature=0.8,
-            top_p=0.95,
-            max_output_tokens=1024,
-        )
-    )
+# ============ MAIN APP ============
 
-    # Sidebar
-    with st.sidebar:
-        st.header("🧘 Quick Relaxation Tips")
+# Configure API
+genai.configure(api_key=st.session_state.app_key)
 
-        with st.expander("🫁 Deep Breathing (4-7-8)"):
-            st.write("""
-            1. Inhale for **4 seconds**
-            2. Hold for **7 seconds**
-            3. Exhale for **8 seconds**
-            4. Repeat 3-4 times
-            
-            *This activates your relaxation response.*
-            """)
+# Initialize model
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    system_instruction=SYSTEM_INSTRUCTION,
+    generation_config={
+        "temperature": 0.8,
+        "top_p": 0.95,
+        "max_output_tokens": 1024,
+    }
+)
 
-        with st.expander("🌍 Grounding (5-4-3-2-1)"):
-            st.write("""
-            Notice around you:
-            - **5** things you can see 👀
-            - **4** things you can touch ✋
-            - **3** things you can hear 👂
-            - **2** things you can smell 👃
-            - **1** thing you can taste 👅
-            
-            *This helps bring you to the present moment.*
-            """)
+# Sidebar
+with st.sidebar:
+    st.header("🧘 Quick Relaxation Tips")
 
-        with st.expander("🧊 Quick Stress Relief"):
-            st.write("""
-            - **Cold water**: Splash on your face
-            - **Stretch**: Roll your shoulders
-            - **Walk**: Even 5 minutes helps
-            - **Music**: Listen to calming sounds
-            """)
-
-        with st.expander("📞 Crisis Resources"):
-            st.write("""
-            **If you're in crisis, please reach out:**
-            
-            🇺🇸 **USA**: 988 (Suicide & Crisis Lifeline)
-            
-            🇮🇳 **India**: 
-            - iCall: 9152987821
-            - Vandrevala: 1860-2662-345
-            
-            🇬🇧 **UK**: 116 123 (Samaritans)
-            
-            🌐 **International**: [findahelpline.com](https://findahelpline.com)
-            
-            💚 Your campus counseling center is also there for you.
-            """)
-
-        st.divider()
-        
-        st.markdown("### ⚙️ Options")
-
-        if st.button("🔄 Clear Chat", use_container_width=True):
-            st.session_state.messages = []
-            st.rerun()
-        
-        if st.button("🔑 Change API Key", use_container_width=True):
-            st.session_state.api_key_valid = False
-            st.session_state.app_key = ""
-            st.session_state.messages = []
-            st.rerun()
-        
-        st.divider()
-        
+    with st.expander("🫁 Deep Breathing (4-7-8)"):
         st.markdown("""
-        <div style='text-align: center; color: gray; font-size: 12px;'>
-        Made with 💚 for students<br>
-        Remember: It's okay to not be okay
-        </div>
-        """, unsafe_allow_html=True)
+        1. **Inhale** for 4 seconds
+        2. **Hold** for 7 seconds
+        3. **Exhale** for 8 seconds
+        4. Repeat 3-4 times
+        """)
 
-    # Welcome message
-    if not st.session_state.messages:
-        with st.chat_message("assistant", avatar="🌱"):
-            st.markdown("""
-            Hey there! 👋 I'm your **Student Wellness Companion**.
+    with st.expander("🌍 Grounding (5-4-3-2-1)"):
+        st.markdown("""
+        Notice around you:
+        - **5** things you can see 👀
+        - **4** things you can touch ✋
+        - **3** things you can hear 👂
+        - **2** things you can smell 👃
+        - **1** thing you can taste 👅
+        """)
 
-            This is a safe space to talk about anything – stress, studies, 
-            loneliness, or just life in general.
+    with st.expander("💧 Quick Relief"):
+        st.markdown("""
+        - Splash cold water on face
+        - Roll your shoulders
+        - Take a 5-min walk
+        - Listen to calming music
+        """)
 
-            I'm here to listen, support, and help you feel a little better. 💚
-
-            **How are you feeling today?**
-            """)
-
-    # Display chat history
-    for message in st.session_state.messages:
-        if message["role"] == "user":
-            with st.chat_message("user", avatar="😊"):
-                st.markdown(message["content"])
-        else:
-            with st.chat_message("assistant", avatar="🌱"):
-                st.markdown(message["content"])
-
-    # Chat input
-    if prompt := st.chat_input("Share what's on your mind... 💭"):
-        # Add user message to history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.expander("📞 Crisis Resources"):
+        st.markdown("""
+        **USA:** 988 (Crisis Lifeline)
         
-        with st.chat_message("user", avatar="😊"):
-            st.markdown(prompt)
+        **India:**
+        - iCall: 9152987821
+        - Vandrevala: 1860-2662-345
+        
+        **UK:** 116 123 (Samaritans)
+        
+        **International:** [findahelpline.com](https://findahelpline.com)
+        """)
 
-        # Build conversation history for API
-        history = []
-        for msg in st.session_state.messages[:-1]:
-            role = "user" if msg["role"] == "user" else "model"
-            history.append({"role": role, "parts": [msg["content"]]})
+    st.divider()
 
-        # Start chat with history
-        chat = model.start_chat(history=history)
-
-        # Generate response
-        with st.chat_message("assistant", avatar="🌱"):
-            try:
-                response = chat.send_message(prompt, stream=True)
-                
-                # Stream the response
-                response_text = ""
-                placeholder = st.empty()
-                
-                for chunk in response:
-                    if chunk.text:
-                        response_text += chunk.text
-                        placeholder.markdown(response_text + "▌")
-                
-                placeholder.markdown(response_text)
-                
-                # Add assistant response to history
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": response_text
-                })
-                
-            except Exception as e:
-                st.error(f"Error generating response: {e}")
-                st.info("Please try again or clear the chat.")
-
-except Exception as e:
-    st.error(f"An error occurred: {e}")
+    if st.button("🔄 Clear Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
     
-    col1, col2 = st.columns(2)
+    if st.button("🔑 Change API Key", use_container_width=True):
+        st.session_state.api_key_valid = False
+        st.session_state.app_key = ""
+        st.session_state.messages = []
+        st.rerun()
+
+# Welcome Message
+if not st.session_state.messages:
+    with st.chat_message("assistant", avatar="🌱"):
+        st.markdown("""
+        Hey there! 👋 I'm your **Student Wellness Companion**.
+
+        This is a safe space to talk about anything – stress, studies, 
+        loneliness, or just life in general.
+
+        I'm here to listen and support you. 💚
+
+        **How are you feeling today?**
+        """)
+
+# Display Chat History
+for message in st.session_state.messages:
+    avatar = "😊" if message["role"] == "user" else "🌱"
+    with st.chat_message(message["role"], avatar=avatar):
+        st.markdown(message["content"])
+
+# Chat Input
+if prompt := st.chat_input("Share what's on your mind... 💭"):
     
-    with col1:
-        if st.button("🔄 Retry", use_container_width=True):
-            st.rerun()
-    
-    with col2:
-        if st.button("🔑 Reset API Key", use_container_width=True):
-            st.session_state.api_key_valid = False
-            st.session_state.app_key = ""
-            st.rerun()
+    # Display user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user", avatar="😊"):
+        st.markdown(prompt)
+
+    # Build history
+    history = []
+    for msg in st.session_state.messages[:-1]:
+        role = "user" if msg["role"] == "user" else "model"
+        history.append({"role": role, "parts": [msg["content"]]})
+
+    # Generate response
+    with st.chat_message("assistant", avatar="🌱"):
+        try:
+            chat = model.start_chat(history=history)
+            response = chat.send_message(prompt, stream=True)
+            
+            response_text = ""
+            placeholder = st.empty()
+            
+            for chunk in response:
+                if chunk.text:
+                    response_text += chunk.text
+                    placeholder.markdown(response_text + "▌")
+            
+            placeholder.markdown(response_text)
+            
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": response_text
+            })
+            
+        except Exception as e:
+            st.error(f"Error: {e}")
