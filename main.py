@@ -1,6 +1,5 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 # Page Config
 st.set_page_config(
@@ -67,11 +66,25 @@ if "app_key" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "chat" not in st.session_state:
+    st.session_state.chat = None
+
 # Main App
 if "app_key" in st.session_state:
     try:
-        # Initialize client with new SDK
-        client = genai.Client(api_key=st.session_state.app_key)
+        # Configure the API
+        genai.configure(api_key=st.session_state.app_key)
+        
+        # Initialize model
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash-preview-05-20",
+            system_instruction=SYSTEM_INSTRUCTION,
+            generation_config=genai.GenerationConfig(
+                temperature=0.8,
+                top_p=0.95,
+                max_output_tokens=1024,
+            )
+        )
 
         # Sidebar
         with st.sidebar:
@@ -107,6 +120,7 @@ if "app_key" in st.session_state:
 
             if st.button("🔄 Clear Chat", use_container_width=True, type="primary"):
                 st.session_state.messages = []
+                st.session_state.chat = None
                 st.rerun()
 
         # Welcome message
@@ -134,28 +148,17 @@ if "app_key" in st.session_state:
                 st.markdown(prompt)
 
             # Build conversation history for API
-            contents = []
-            for msg in st.session_state.messages:
+            history = []
+            for msg in st.session_state.messages[:-1]:  # Exclude the last message
                 role = "user" if msg["role"] == "user" else "model"
-                contents.append(
-                    types.Content(
-                        role=role,
-                        parts=[types.Part.from_text(text=msg["content"])]
-                    )
-                )
+                history.append({"role": role, "parts": [msg["content"]]})
+
+            # Start chat with history
+            chat = model.start_chat(history=history)
 
             # Generate response
             with st.chat_message("assistant"):
-                response = client.models.generate_content_stream(
-                    model="gemini-2.5-flash",
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_INSTRUCTION,
-                        temperature=0.8,
-                        top_p=0.95,
-                        max_output_tokens=1024,
-                    ),
-                )
+                response = chat.send_message(prompt, stream=True)
                 
                 # Stream the response
                 full_response = st.write_stream(
@@ -167,6 +170,11 @@ if "app_key" in st.session_state:
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
+        if "API key" in str(e).lower() or "invalid" in str(e).lower():
+            st.warning("Please check if your API key is valid.")
+            if st.button("Reset API Key"):
+                del st.session_state.app_key
+                st.rerun()
 
 else:
     st.info("🔑 Please enter your API Key above to start chatting.")
