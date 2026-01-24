@@ -1,6 +1,5 @@
 import streamlit as st
-import subprocess
-import sys
+import google.generativeai as genai
 
 # Page Config
 st.set_page_config(
@@ -8,18 +7,6 @@ st.set_page_config(
     page_icon="🌱",
     layout="centered"
 )
-
-# Function to install package if not found
-def install_package(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-# Try importing google.generativeai
-try:
-    import google.generativeai as genai
-except ImportError:
-    st.warning("Installing google-generativeai... Please wait.")
-    install_package("google-generativeai")
-    st.rerun()
 
 # App Title
 st.title("🌱 Student Wellness Companion")
@@ -32,233 +19,92 @@ Your primary role is to provide emotional support, detect mood through user mess
 and respond with empathy and care.
 
 Core Behaviors:
-
-1. Mood Detection:
-- Analyze tone, word choice, and context of each message
-- Identify emotions like stress, anxiety, loneliness, sadness, frustration
-- Also recognize positive emotions and celebrate them
-
-2. Empathetic Responses:
-- Always validate feelings first ("I hear you", "That sounds really tough")
-- Use warm, non-judgmental language
-- Avoid dismissive phrases like "just relax" or "don't worry"
-
-3. Motivational Support:
-- Offer encouragement tailored to their situation
-- Share brief, relevant affirmations
-- Help reframe negative thoughts gently
-
-4. Relaxation Tips (when appropriate):
-When detecting stress/anxiety, suggest:
-- Deep breathing exercises (4-7-8 technique)
-- Grounding techniques (5-4-3-2-1 senses)
-- Short breaks and self-care suggestions
-
-5. Safety Protocol:
-If someone expresses severe distress or self-harm thoughts:
-- Express care and concern
-- Encourage them to reach out to a professional
-- Provide crisis helpline information
-- Never minimize their feelings
-
-6. General Queries:
-- For non-mental-health questions, respond helpfully and normally
-- Maintain a friendly, supportive tone throughout
-
-Response Style:
-- Keep responses concise but warm
-- Use gentle emoji occasionally 🌟💚
-- Ask follow-up questions to show you care
+1. Mood Detection: Analyze tone and identify emotions like stress, anxiety, loneliness, sadness
+2. Empathetic Responses: Validate feelings first, use warm non-judgmental language
+3. Motivational Support: Offer encouragement and help reframe negative thoughts
+4. Relaxation Tips: Suggest breathing exercises, grounding techniques when needed
+5. Safety Protocol: For severe distress, express care and provide crisis resources
+6. Keep responses concise but warm, use gentle emoji occasionally 🌟💚
 """
 
 # Initialize Session State
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "api_key_valid" not in st.session_state:
-    st.session_state.api_key_valid = False
+if "api_key" not in st.session_state:
+    st.session_state.api_key = None
 
-if "app_key" not in st.session_state:
-    st.session_state.app_key = ""
-
-# API Key Input Section
-if not st.session_state.api_key_valid:
+# API Key Input
+if not st.session_state.api_key:
     st.markdown("### 🔑 Enter Your Gemini API Key")
     
-    api_key_input = st.text_input(
-        "API Key", 
-        type="password", 
-        placeholder="Paste your Gemini API key here..."
-    )
+    key = st.text_input("API Key", type="password")
     
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        submit_btn = st.button("✅ Submit", type="primary", use_container_width=True)
-    
-    if submit_btn:
-        if api_key_input:
+    if st.button("Submit", type="primary"):
+        if key:
             try:
-                genai.configure(api_key=api_key_input)
+                genai.configure(api_key=key)
+                # Test the key
                 model = genai.GenerativeModel("gemini-1.5-flash")
-                model.generate_content("Hi")
-                
-                st.session_state.app_key = api_key_input
-                st.session_state.api_key_valid = True
-                st.success("✅ API Key verified!")
+                model.generate_content("test")
+                st.session_state.api_key = key
+                st.success("✅ Connected!")
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ Invalid API Key: {str(e)}")
+                st.error(f"Invalid API Key: {e}")
         else:
-            st.warning("⚠️ Please enter an API key")
+            st.warning("Please enter a key")
     
-    st.divider()
-    
-    st.markdown("""
-    ### 📖 About This App
-    
-    A **safe space** for students to:
-    - 💬 Talk about stress, anxiety, or loneliness
-    - 🧘 Get relaxation techniques
-    - 💪 Receive motivational support
-    - 📚 Ask general questions too!
-    
-    ---
-    
-    ### 🔑 How to get an API Key:
-    1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-    2. Sign in with your Google account
-    3. Click **"Create API Key"**
-    4. Copy and paste it above
-    """)
-    
+    st.info("Get your key here: [Google AI Studio](https://aistudio.google.com/app/apikey)")
     st.stop()
 
-# ============ MAIN APP ============
-
 # Configure API
-genai.configure(api_key=st.session_state.app_key)
-
-# Initialize model
+genai.configure(api_key=st.session_state.api_key)
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
-    system_instruction=SYSTEM_INSTRUCTION,
-    generation_config={
-        "temperature": 0.8,
-        "top_p": 0.95,
-        "max_output_tokens": 1024,
-    }
+    system_instruction=SYSTEM_INSTRUCTION
 )
 
 # Sidebar
 with st.sidebar:
-    st.header("🧘 Quick Relaxation Tips")
-
-    with st.expander("🫁 Deep Breathing (4-7-8)"):
-        st.markdown("""
-        1. **Inhale** for 4 seconds
-        2. **Hold** for 7 seconds
-        3. **Exhale** for 8 seconds
-        4. Repeat 3-4 times
-        """)
-
-    with st.expander("🌍 Grounding (5-4-3-2-1)"):
-        st.markdown("""
-        Notice around you:
-        - **5** things you can see 👀
-        - **4** things you can touch ✋
-        - **3** things you can hear 👂
-        - **2** things you can smell 👃
-        - **1** thing you can taste 👅
-        """)
-
-    with st.expander("💧 Quick Relief"):
-        st.markdown("""
-        - Splash cold water on face
-        - Roll your shoulders
-        - Take a 5-min walk
-        - Listen to calming music
-        """)
-
-    with st.expander("📞 Crisis Resources"):
-        st.markdown("""
-        **USA:** 988 (Crisis Lifeline)
-        
-        **India:**
-        - iCall: 9152987821
-        - Vandrevala: 1860-2662-345
-        
-        **UK:** 116 123 (Samaritans)
-        
-        **International:** [findahelpline.com](https://findahelpline.com)
-        """)
-
-    st.divider()
-
-    if st.button("🔄 Clear Chat", use_container_width=True):
+    st.header("🧘 Relaxation Tips")
+    with st.expander("Deep Breathing"):
+        st.write("Inhale 4s → Hold 7s → Exhale 8s")
+    with st.expander("Grounding 5-4-3-2-1"):
+        st.write("5 see, 4 touch, 3 hear, 2 smell, 1 taste")
+    with st.expander("📞 Crisis Help"):
+        st.write("USA: 988 | India: 9152987821")
+    
+    if st.button("Clear Chat"):
         st.session_state.messages = []
         st.rerun()
     
-    if st.button("🔑 Change API Key", use_container_width=True):
-        st.session_state.api_key_valid = False
-        st.session_state.app_key = ""
-        st.session_state.messages = []
+    if st.button("Reset Key"):
+        st.session_state.api_key = None
         st.rerun()
 
-# Welcome Message
+# Chat Interface
 if not st.session_state.messages:
-    with st.chat_message("assistant", avatar="🌱"):
-        st.markdown("""
-        Hey there! 👋 I'm your **Student Wellness Companion**.
+    with st.chat_message("assistant"):
+        st.markdown("Hey! 👋 I'm here to support you. **How are you feeling today?** 💚")
 
-        This is a safe space to talk about anything – stress, studies, 
-        loneliness, or just life in general.
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-        I'm here to listen and support you. 💚
-
-        **How are you feeling today?**
-        """)
-
-# Display Chat History
-for message in st.session_state.messages:
-    avatar = "😊" if message["role"] == "user" else "🌱"
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
-
-# Chat Input
-if prompt := st.chat_input("Share what's on your mind... 💭"):
-    
-    # Display user message
+if prompt := st.chat_input("Share what's on your mind..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar="😊"):
+    with st.chat_message("user"):
         st.markdown(prompt)
-
-    # Build history
-    history = []
-    for msg in st.session_state.messages[:-1]:
-        role = "user" if msg["role"] == "user" else "model"
-        history.append({"role": role, "parts": [msg["content"]]})
-
-    # Generate response
-    with st.chat_message("assistant", avatar="🌱"):
+    
+    # Generate Response
+    history = [{"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} for m in st.session_state.messages[:-1]]
+    
+    with st.chat_message("assistant"):
         try:
             chat = model.start_chat(history=history)
             response = chat.send_message(prompt, stream=True)
-            
-            response_text = ""
-            placeholder = st.empty()
-            
-            for chunk in response:
-                if chunk.text:
-                    response_text += chunk.text
-                    placeholder.markdown(response_text + "▌")
-            
-            placeholder.markdown(response_text)
-            
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": response_text
-            })
-            
+            text = st.write_stream(chunk.text for chunk in response if chunk.text)
+            st.session_state.messages.append({"role": "assistant", "content": text})
         except Exception as e:
             st.error(f"Error: {e}")
