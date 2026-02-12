@@ -255,4 +255,5 @@ if prompt := st.chat_input("Share what's on your mind..."):
             st.markdown(reply)
 
     # Save assistant reply
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.session_state.messages.append({"role": "assistant", "content": reply}) 
+
