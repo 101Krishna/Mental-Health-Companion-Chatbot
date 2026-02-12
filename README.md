@@ -4,6 +4,7 @@ A compassionate AI-powered mental health support chatbot designed specifically f
 
 
 ---
+![Uploading image.png…]()
 
 ## 1. Problem Statement
 
