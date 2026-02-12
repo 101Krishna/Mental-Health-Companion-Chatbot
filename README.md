@@ -1,4 +1,4 @@
-<img width="493" height="274" alt="image" src="https://github.com/user-attachments/assets/44f8b3b5-9e54-40bf-9d0e-2f2cab5936cb" /># 🌱 Student Wellness Companion Chatbot
+# 🌱 Student Wellness Companion Chatbot
 
 A compassionate AI-powered mental health support chatbot designed specifically for students, built with Streamlit and Google Gemini 2.5 Flash API.
 
