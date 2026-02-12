@@ -5,12 +5,19 @@ A compassionate AI-powered mental health support chatbot designed specifically f
 
 ---
 <img width="493" height="274" alt="111111111" src="https://github.com/user-attachments/assets/599378b1-ff4b-4c6c-b77a-42f68c54f09e" />
+
 ---
+
 <img width="365" height="274" alt="222222222" src="https://github.com/user-attachments/assets/762eb62e-ac0a-4c83-9272-41125afd5406" />
+
 ---
+
 <img width="545" height="252" alt="3333333333333" src="https://github.com/user-attachments/assets/346b42b5-9e9c-423e-be5c-3d35958256df" />
+
 ---
+
 <img width="563" height="246" alt="4444444444" src="https://github.com/user-attachments/assets/8584bf39-b656-47dd-9ac1-3063ce776826" />
+
 ---
 
 ## 1. Problem Statement
