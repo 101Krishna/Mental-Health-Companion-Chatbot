@@ -376,6 +376,5 @@ streamlit run main.py
 **Author:** Krishna  
 **Project Type:** Student Mental Health Support  
 **Built With:** Streamlit + Google Gemini 2.5 Flash    
-**Last Updated:** January 2026  
 
 *Made with 💚 for student wellness*
